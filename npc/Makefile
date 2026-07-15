@@ -1,8 +1,13 @@
-all:
-	@echo "Write this Makefile by your self."
+VSRC = ./vsrc/$(TARGET).v
+CSRC = ./csrc/$(TARGET).cpp
+WVFM = ./waveform/$(TARGET).fst
 
-sim:
+all:
+	verilator --cc --exe --build -j 0 -Wall --trace-fst $(VSRC) $(CSRC)
+
+sim: all
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
-	@echo "Write this Makefile by your self."
+	./obj_dir/V$(TARGET)
+	gtkwave $(WVFM)
 
 include ../Makefile
