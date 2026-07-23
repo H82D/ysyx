@@ -21,7 +21,7 @@
 #include <regex.h>
 
 enum {
-  TK_NOTYPE = 256, TK_EQ,
+	'+', '-', '*', '/', '(', ')', TK_NOTYPE = 256, TK_EQ, TK_NUM,
 
   /* TODO: Add more token types */
 
@@ -35,10 +35,15 @@ static struct rule {
   /* TODO: Add more rules.
    * Pay attention to the precedence level of different rules.
    */
-
-  {" +", TK_NOTYPE},    // spaces
   {"\\+", '+'},         // plus
-  {"==", TK_EQ},        // equal
+	{"-", '-'}, 					// minus
+	{"\\*", '*'}, 				// times
+	{"/". '/'}, 					// divide
+	{"(", '('},						// left bracket
+	{")", ')'}, 					// right bracket
+  {" +", TK_NOTYPE},    // spaces
+	{"==", TK_EQ},        // equal
+	{"[0-9]{1,31}", TK_NUM},		// number
 };
 
 #define NR_REGEX ARRLEN(rules)
@@ -94,7 +99,44 @@ static bool make_token(char *e) {
          * of tokens, some extra actions should be performed.
          */
 
+				if (nr_token >= 32){
+					printf("expression too long\n");
+					return false;
+				}
+
         switch (rules[i].token_type) {
+					case TK_NOTYPE:
+						break;
+					case '+':
+						tokens[nr_token++].type = '+';
+						break;
+					case '-':
+						tokens[nr_token++].type = '-';
+						break;
+					case '*':
+						tokens[nr_token++].type = '*';
+						break;
+					case'/':
+						tokens[nr_token++].type = '/';
+						break;
+					case '(':
+						tokens[nr_token++].type = '(';
+						break;
+					case ')':
+						tokens[nr_token++].type = ')';
+						break;
+					case TK_EQ:
+						tokens[nr_token++].type = TK_EQ;
+						break;
+					case TK_NUM:
+						if(substr_len >= 32) {
+							printf("integer too long:%s\n", substr_start);
+							return false;
+						}
+						tokens[nr_token].type = TK_NUM;
+						strncpy(tokens[nr_token].str, substr_start, substr_len);
+						nr_token++;
+						break;
           default: TODO();
         }
 

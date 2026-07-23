@@ -19,6 +19,8 @@
 #include <readline/history.h>
 #include "sdb.h"
 
+#include <memory/vaddr.h>
+
 static int is_batch_mode = false;
 
 void init_regex();
@@ -52,6 +54,61 @@ static int cmd_q(char *args) {
   return -1;
 }
 
+static int cmd_si(char *args){
+	int n = 0;
+	if(args) n = atoi(args);
+	if (n <= 0) n = 1;
+	cpu_exec(n);
+	return 0;
+}
+
+static int cmd_info(char *args){
+	if(!args) return 0;
+	switch(args[0]){
+		case 'r':
+			isa_reg_display();
+			break;
+		case 'w':
+			//TODO: print watchpoint state
+			break;
+		default:
+			return 0;
+	}
+	return 0;
+}
+
+static int cmd_x(char *args){
+	char *temp;
+	temp = strtok(args, " ");
+	if(!temp) { printf("usage: x N addr\n"); return 0; }
+	int n;
+	n = strtol(temp, NULL, 10);
+
+	temp = strtok(NULL, " ");
+	if(!temp) { printf("usage: x N addr\n"); return 0; }
+	vaddr_t addr;
+	addr = strtol(temp, NULL, 16);
+	if(n <= 0 || n > 64){ printf("invalid parameter N\n"); return 0; }
+	int i = 0;
+	int j = 0;
+	while(1){
+		printf("0x%08x:  ", addr + i * 4);
+		j=0;
+		while(j<4){
+			printf("%08x  ", vaddr_read(addr + i * 4, 4));
+			if(++i == n) { printf("\n"); return 0;}
+			j++;
+		}
+		printf("\n");
+	}
+}
+
+static int cmd_p(char *args){
+	bool *success;
+	expr(args, success);
+	return 0;
+}
+
 static int cmd_help(char *args);
 
 static struct {
@@ -62,6 +119,9 @@ static struct {
   { "help", "Display information about all supported commands", cmd_help },
   { "c", "Continue the execution of the program", cmd_c },
   { "q", "Exit NEMU", cmd_q },
+	{ "si", "Execute 1 or more instructions", cmd_si },
+	{ "info", "print register state (r) or watchpoint info (w)", cmd_info },
+	{ "x", "print data in memory", cmd_x },
 
   /* TODO: Add more commands */
 
