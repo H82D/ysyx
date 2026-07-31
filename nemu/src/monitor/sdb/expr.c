@@ -14,14 +14,16 @@
 ***************************************************************************************/
 
 #include <isa.h>
+#include <memory/vaddr.h>
 
 /* We use the POSIX regex functions to process regular expressions.
  * Type 'man regex' for more information about POSIX regex functions.
  */
 #include <regex.h>
+#define MAX_TOKEN 32768
 
 enum {
-	'+', '-', '*', '/', '(', ')', TK_NOTYPE = 256, TK_EQ, TK_NUM,
+	 TK_NOTYPE = 256, TK_EQ, TK_NUM_DEC, TK_NEQ, TK_NUM_HEX, TK_REG, TK_AND, TK_NEG, TK_PTR,
 
   /* TODO: Add more token types */
 
@@ -38,12 +40,16 @@ static struct rule {
   {"\\+", '+'},         // plus
 	{"-", '-'}, 					// minus
 	{"\\*", '*'}, 				// times
-	{"/". '/'}, 					// divide
-	{"(", '('},						// left bracket
-	{")", ')'}, 					// right bracket
+	{"/", '/'}, 					// divide
+	{"\\(", '('},					// left bracket
+	{"\\)", ')'}, 				// right bracket
   {" +", TK_NOTYPE},    // spaces
 	{"==", TK_EQ},        // equal
-	{"[0-9]{1,31}", TK_NUM},		// number
+	{"!=", TK_NEQ}, 			// not equal
+	{"&&", TK_AND}, 			// and
+	{"\\$[a-zA-Z0-9]+", TK_REG},	// register
+	{"0x[a-fA-F0-9]{1,31}", TK_NUM_HEX},	// hex number
+	{"[0-9]{1,31}", TK_NUM_DEC},	// dec number
 };
 
 #define NR_REGEX ARRLEN(rules)
@@ -72,7 +78,7 @@ typedef struct token {
   char str[32];
 } Token;
 
-static Token tokens[32] __attribute__((used)) = {};
+static Token tokens[MAX_TOKEN] __attribute__((used)) = {};
 static int nr_token __attribute__((used))  = 0;
 
 static bool make_token(char *e) {
@@ -89,8 +95,8 @@ static bool make_token(char *e) {
         char *substr_start = e + position;
         int substr_len = pmatch.rm_eo;
 
-        Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s",
-            i, rules[i].regex, position, substr_len, substr_len, substr_start);
+        //Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s",
+        //   i, rules[i].regex, position, substr_len, substr_len, substr_start);
 
         position += substr_len;
 
@@ -99,7 +105,7 @@ static bool make_token(char *e) {
          * of tokens, some extra actions should be performed.
          */
 
-				if (nr_token >= 32){
+				if (nr_token >= MAX_TOKEN){
 					printf("expression too long\n");
 					return false;
 				}
@@ -108,38 +114,62 @@ static bool make_token(char *e) {
 					case TK_NOTYPE:
 						break;
 					case '+':
-						tokens[nr_token++].type = '+';
+						tokens[nr_token].type = '+';
 						break;
 					case '-':
-						tokens[nr_token++].type = '-';
+						if(nr_token == 0
+								|| tokens[nr_token - 1].type == TK_NUM_HEX
+								|| tokens[nr_token - 1].type == TK_NUM_DEC
+								|| tokens[nr_token - 1].type == TK_REG
+								|| tokens[nr_token - 1].type == ')')
+							tokens[nr_token].type = '-';
+						else tokens[nr_token].type = TK_NEG;
 						break;
 					case '*':
-						tokens[nr_token++].type = '*';
+						if(nr_token == 0
+								|| tokens[nr_token - 1].type == TK_NUM_HEX
+								|| tokens[nr_token - 1].type == TK_NUM_DEC
+								|| tokens[nr_token - 1].type == TK_REG
+								|| tokens[nr_token - 1].type == ')')
+							tokens[nr_token].type = '*';
+						else tokens[nr_token].type = TK_PTR;
 						break;
 					case'/':
-						tokens[nr_token++].type = '/';
+						tokens[nr_token].type = '/';
 						break;
 					case '(':
-						tokens[nr_token++].type = '(';
+						tokens[nr_token].type = '(';
 						break;
 					case ')':
-						tokens[nr_token++].type = ')';
+						tokens[nr_token].type = ')';
 						break;
 					case TK_EQ:
-						tokens[nr_token++].type = TK_EQ;
+						tokens[nr_token].type = TK_EQ;
 						break;
-					case TK_NUM:
-						if(substr_len >= 32) {
-							printf("integer too long:%s\n", substr_start);
-							return false;
-						}
-						tokens[nr_token].type = TK_NUM;
-						strncpy(tokens[nr_token].str, substr_start, substr_len);
-						nr_token++;
+					case TK_NEQ:
+						tokens[nr_token].type = TK_NEQ;
 						break;
-          default: TODO();
+					case TK_NUM_DEC:
+						tokens[nr_token].type = TK_NUM_DEC;
+						break;
+					case TK_NUM_HEX:
+						tokens[nr_token].type = TK_NUM_HEX;
+						break;
+					case TK_REG:
+						tokens[nr_token].type = TK_REG;
+						break;
+					case TK_AND:
+						tokens[nr_token].type = TK_AND;
+						break;
+          default: 
+						printf("wrong token type %d\n", rules[i].token_type);
+						return false;
         }
-
+				if(rules[i].token_type != TK_NOTYPE) {
+					strncpy(tokens[nr_token].str, substr_start, substr_len);
+					tokens[nr_token].str[substr_len] = '\0';
+					nr_token++;
+				}
         break;
       }
     }
@@ -153,15 +183,167 @@ static bool make_token(char *e) {
   return true;
 }
 
+bool check_parentheses(int p, int q){
+	if (tokens[p].type != '(') return false;
+	int pair = 0;
+	for (int i = p; i <= q; i++){
+		if (tokens[i].type == '(') pair++;
+		if (tokens[i].type == ')') pair--;
+		if (pair <= 0 && i != q) {
+			return false;
+		}
+	}
+	return (pair == 0);
+}
 
-word_t expr(char *e, bool *success) {
+static int find_main_oprator(int p, int q){
+	int priority[MAX_TOKEN];
+	int base = 0;
+	int max = p;
+	for (int i = p; i <= q; i++){
+		switch(tokens[i].type){
+			case '(':
+				base -= 20;
+				priority[i] = base + 1;
+				break;
+			case ')':
+				base += 20;
+				priority[i] = base + 1;
+				break;
+			case TK_PTR:
+			case TK_NEG:
+				priority[i] = base + 2;
+				break;
+			case '*':
+			case '/':
+				priority[i] = base + 3;
+				break;
+			case '+':
+			case '-':
+				priority[i] = base + 4;
+				break;
+			case TK_EQ:
+			case TK_NEQ:
+				priority[i] = base + 8;
+				break;
+			case TK_AND:
+				priority[i] = base + 12;
+				break;
+			case TK_NUM_DEC:
+			case TK_NUM_HEX:
+			case TK_REG:
+				priority[i] = base;
+				break;
+		}
+		if (priority[i] >= priority[max]) max = i;
+	}
+	return max;
+}
+	
+
+static uint32_t eval(int p, int q, bool *success) {
+	if(p < 0 || q < 0) {
+		//printf("invalid parameter:%d %d\n", p, q);
+		*success = false;
+		return 0;
+	}
+  if (p > q) {
+  /* Bad expression */
+		// printf("invalid parameter:%d %d\n", p, q);
+		*success = false;
+		return 0;
+  }
+	else if (p == q) {
+  /* Single token.
+	* For now this token should be a number.
+	* Return the value of the number.
+	*/
+		if(tokens[p].type == TK_NUM_DEC){
+			return strtol(tokens[p].str, NULL, 10);
+		} 
+		else if(tokens[p].type == TK_NUM_HEX){
+			return strtol(tokens[p].str + 2, NULL, 16);
+		}
+		else if(tokens[p].type == TK_REG){
+			return isa_reg_str2val(tokens[p].str + 1, success);
+		}
+		else {
+			printf("invalid expression at position %d\n", p);
+			*success = false;
+			return 0;
+		}
+  }
+  else if (check_parentheses(p, q)) {
+  /* The expression is surrounded by a matched pair of parentheses.
+	 * If that is the case, just throw away the parentheses.
+	 */
+		return eval(p + 1, q - 1, success);
+  }
+	else {
+		*success = true;
+		int op = p, val1 = 0, val2 = 0;
+	  op = find_main_oprator(p, q);
+    if(tokens[op].type != TK_PTR
+				&& tokens[op].type != TK_NEG) 
+			val1 = eval(p, op - 1, success);
+    val2 = eval(op + 1, q, success);
+
+		switch (tokens[op].type) {
+	    case '+': 
+				return val1 + val2;
+      case '-': 
+				return val1 - val2; 
+      case '*': 
+				return val1 * val2;
+      case '/': 
+				if(val2 != 0) return val1 / val2;
+				else {
+					*success = false;
+					printf("divide by zero\n");
+					return 0;
+				}
+			case TK_EQ: 
+				return val1 == val2;
+			case TK_NEQ: 
+				return val1 != val2;
+			case TK_AND: 
+				return val1 && val2;
+			case TK_PTR: 
+				return vaddr_read(val2, 4);
+			case TK_NEG:
+				return -val2;
+      default:	
+				printf("invalid token type at position %d\n", op);
+				*success = false;
+				return 0;
+		}
+	}
+}
+
+uint32_t expr(char *e, bool *success) {
+	*success = true;
   if (!make_token(e)) {
     *success = false;
+		printf("make_token fail\n");
     return 0;
   }
+	
+	int braket = 0;
+	for (int i = 0; i < nr_token; i++){
+		if(tokens[i].type == '(') braket++;
+		if(tokens[i].type == ')') braket--;
+		if(braket < 0){
+			*success = false;
+			printf("wrong braket\n");
+			return 0;
+		}
+	}
+	if(braket > 0){
+		*success = false;
+		printf("wrong braket\n");
+		return 0;
+	}
 
   /* TODO: Insert codes to evaluate the expression. */
-  TODO();
-
-  return 0;
+	return eval(0, nr_token-1, success);
 }

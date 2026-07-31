@@ -25,17 +25,73 @@ static char buf[65536] = {};
 static char code_buf[65536 + 128] = {}; // a little larger than `buf`
 static char *code_format =
 "#include <stdio.h>\n"
+"#include <stdint.h>\n"
 "int main() { "
-"  unsigned result = %s; "
+"  uint32_t result; "
+"  result = %s; "
 "  printf(\"%%u\", result); "
 "  return 0; "
 "}";
+static int c = 0;
 
-static void gen_rand_expr() {
-  buf[0] = '\0';
+static int gen_num(){
+	if (c >= 65530) return -1;
+	int n;
+	n = sprintf(buf + c, "%d", rand() & 0xffff);
+	assert(n>0);
+	c += n;
+	return 0;
+}
+
+static int gen_op(){
+	if (c >= 65534) return -1;
+	switch(rand() % 4){
+		case 0:
+			buf[c++] = '+';
+			break;
+		case 1:
+			buf[c++] = '-';
+			break;
+		case 2:
+			buf[c++] = '*';
+			break;
+		case 3:
+			buf[c++] = '/';
+			break;
+		default:
+			assert(0);
+	}
+	return 0;
+}
+
+static int gen_rand_expr() {
+	// sometime extrmely long expression
+	if (c >= 65530) return -1;
+	if(rand()%3 == 0) buf[c++] = ' ';
+	switch(rand()%3){
+			case 0:
+				if(gen_num()) return -1;
+				break;
+			case 1:
+				buf[c++] = '(';
+				if(gen_rand_expr()) return -1;
+				buf[c++] = ')';
+				break;
+			case 2:
+				if(gen_rand_expr()) return -1;
+				if(gen_op()) return -1;
+				if(gen_rand_expr()) return -1;
+				break;
+			default:
+				assert(0);
+	}
+	if(rand()%3 == 0) buf[c++] = ' ';
+	buf[c] = '\0';
+	return 0;
 }
 
 int main(int argc, char *argv[]) {
+	FILE *fp;
   int seed = time(0);
   srand(seed);
   int loop = 1;
@@ -44,23 +100,26 @@ int main(int argc, char *argv[]) {
   }
   int i;
   for (i = 0; i < loop; i ++) {
-    gen_rand_expr();
+		c = 0;
+    if(gen_rand_expr()) continue;
 
     sprintf(code_buf, code_format, buf);
 
-    FILE *fp = fopen("/tmp/.code.c", "w");
+    fp = fopen("/tmp/.code.c", "w");
     assert(fp != NULL);
     fputs(code_buf, fp);
     fclose(fp);
 
-    int ret = system("gcc /tmp/.code.c -o /tmp/.expr");
-    if (ret != 0) continue;
-
-    fp = popen("/tmp/.expr", "r");
-    assert(fp != NULL);
+    int ret = system("gcc -Werror -Wno-overflow /tmp/.code.c -o /tmp/.expr");
+		if(ret == 256) {
+			printf("1 1\n");
+			continue;
+		}
 
     int result;
-    ret = fscanf(fp, "%d", &result);
+		fp = popen("/tmp/.expr", "r");
+		ret = fscanf(fp, "%d", &result);
+		assert(ret == 1);
     pclose(fp);
 
     printf("%u %s\n", result, buf);

@@ -20,6 +20,7 @@
 #include "sdb.h"
 
 #include <memory/vaddr.h>
+#include <time.h>
 
 static int is_batch_mode = false;
 
@@ -51,6 +52,7 @@ static int cmd_c(char *args) {
 
 
 static int cmd_q(char *args) {
+	nemu_state.state = NEMU_QUIT;
   return -1;
 }
 
@@ -69,7 +71,7 @@ static int cmd_info(char *args){
 			isa_reg_display();
 			break;
 		case 'w':
-			//TODO: print watchpoint state
+			print_watchpoint();
 			break;
 		default:
 			return 0;
@@ -78,19 +80,30 @@ static int cmd_info(char *args){
 }
 
 static int cmd_x(char *args){
+	printf("warning: this may be wrong\n");
 	char *temp;
 	temp = strtok(args, " ");
-	if(!temp) { printf("usage: x N addr\n"); return 0; }
+	if(!temp) { printf("usage: x N expr\n"); return 0; }
 	int n;
 	n = strtol(temp, NULL, 10);
 
 	temp = strtok(NULL, " ");
-	if(!temp) { printf("usage: x N addr\n"); return 0; }
+	if(!temp) { printf("usage: x N expr\n"); return 0; }
+
 	vaddr_t addr;
-	addr = strtol(temp, NULL, 16);
-	if(n <= 0 || n > 64){ printf("invalid parameter N\n"); return 0; }
-	int i = 0;
-	int j = 0;
+	bool success;
+	addr = expr(temp, &success);
+
+	if(n <= 0 || n > 64){ 
+		printf("invalid parameter N\n"); 
+		return 0; 
+	}
+	if(!success){
+		printf("invalid expr\n");
+		return 0;
+	}
+
+	int i = 0, j = 0;
 	while(1){
 		printf("0x%08x:  ", addr + i * 4);
 		j=0;
@@ -104,8 +117,77 @@ static int cmd_x(char *args){
 }
 
 static int cmd_p(char *args){
-	bool *success;
-	expr(args, success);
+	printf("warning: this may be wrong\n");
+	if(!args){
+		printf("no expression\n");
+		return 0;
+	}
+	bool success;
+	int64_t val = expr(args, &success);
+	if(success) printf("%ld\n", val);
+	else printf("evaluation fail\n");
+	return 0;
+}
+
+static int cmd_w(char *args) {
+	if(new_wp(args)) {
+		printf("fail to create watchpoint\n");
+		return -1;
+	}
+	printf("create watchpoint\n");
+	return 0;
+}
+
+static int cmd_d(char *args) {
+	if(args == NULL){
+		printf("usage: d [id]\n");
+		return 0;
+	}
+	if (!free_wp(atoi(args))) {
+		printf("fail to delete watchpoint\n");
+		return -1;
+	}
+	printf("delete watchpoint\n");
+	return 0;
+}
+
+static int cmd_check_expr(char *args) {
+	int n = 0;
+	if(args) n = atoi(args);
+	if(n <= 0) n = 1;
+	uint32_t result, val;
+	bool success;
+	char text[65536 + 128];
+	char *expression;
+	FILE *fp, *lg;
+	int i;
+	lg = fopen("/home/hbzd/Desktop/expr.txt", "a+");
+	assert(lg);
+	for (; n>0; n--){
+		int t = time(0);
+		fprintf(lg, "seed: %d\n", t);
+		fp = popen("/home/hbzd/ysyx-workbench/nemu/tools/gen-expr/gen-expr", "r");
+		if (!fgets(text, 65536 + 128, fp)){
+			printf("read expr error:%s\n", text);
+			pclose(fp);
+			while(t==time(0));
+			break;
+		}
+		pclose(fp);
+		fprintf(lg, "%s\n", text);
+		result = strtol(text, &expression, 10);
+		for(i=0;expression[i] != '\n' && expression[i] != '\0'; i++);
+		expression[i] = '\0';
+		val = expr(expression, &success);
+		if(val != result || !success){
+			printf("wrong result:%d correct result:%d\ntext:%s\nexpression:%s\n", val, result, text, expression);
+			while(t==time(0));
+			continue;
+		}
+		while(t==time(0));
+	}
+	fclose(lg);
+	printf("finish\n");
 	return 0;
 }
 
@@ -122,6 +204,10 @@ static struct {
 	{ "si", "Execute 1 or more instructions", cmd_si },
 	{ "info", "print register state (r) or watchpoint info (w)", cmd_info },
 	{ "x", "print data in memory", cmd_x },
+	{ "p", "evaluate expression", cmd_p },
+	{ "check-expr", "check expression evaluation", cmd_check_expr },
+	{ "w", "create watchpoint", cmd_w },
+	{ "d", "delete watchpoint", cmd_d },
 
   /* TODO: Add more commands */
 

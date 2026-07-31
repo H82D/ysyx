@@ -16,3 +16,14 @@
 NAME = gen-expr
 SRCS = gen-expr.c
 include $(NEMU_HOME)/scripts/build.mk
+
+all:
+	gcc -Wall $(SRCS) -o $(NAME)
+
+run:
+	gcc -Wall $(SRCS) -o $(NAME)
+	./$(NAME)
+
+
+clean:
+	rm $(NAME)
