@@ -80,7 +80,7 @@ static int cmd_info(char *args){
 }
 
 static int cmd_x(char *args){
-	printf("warning: this may be wrong\n");
+	//printf("warning: this may be wrong\n");
 	char *temp;
 	temp = strtok(args, " ");
 	if(!temp) { printf("usage: x N expr\n"); return 0; }
@@ -117,7 +117,7 @@ static int cmd_x(char *args){
 }
 
 static int cmd_p(char *args){
-	printf("warning: this may be wrong\n");
+	//printf("warning: this may be wrong\n");
 	if(!args){
 		printf("no expression\n");
 		return 0;
