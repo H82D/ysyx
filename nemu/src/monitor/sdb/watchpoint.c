@@ -118,7 +118,7 @@ void check_wp() {
 		}
 		node = node -> next;
 	}
-	if (changed) nemu_state.state = NEMU_STOP;
+	if (changed && nemu_state.state == NEMU_RUNNING) nemu_state.state = NEMU_STOP;
 }
 
 void print_watchpoint() {

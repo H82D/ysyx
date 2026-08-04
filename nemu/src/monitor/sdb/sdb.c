@@ -132,7 +132,7 @@ static int cmd_p(char *args){
 static int cmd_w(char *args) {
 	if(new_wp(args)) {
 		printf("fail to create watchpoint\n");
-		return -1;
+		return 0;
 	}
 	printf("create watchpoint\n");
 	return 0;
@@ -143,9 +143,10 @@ static int cmd_d(char *args) {
 		printf("usage: d [id]\n");
 		return 0;
 	}
-	if (!free_wp(atoi(args))) {
+	int id = atoi(args);
+	if (free_wp(id)) {
 		printf("fail to delete watchpoint\n");
-		return -1;
+		return 0;
 	}
 	printf("delete watchpoint\n");
 	return 0;
