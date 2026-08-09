@@ -24,5 +24,6 @@ int new_wp(char *e);
 int free_wp(int id);
 void print_watchpoint();
 void check_wp();
+void init_wp_pool();
 
 #endif
