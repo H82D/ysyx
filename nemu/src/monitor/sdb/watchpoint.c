@@ -46,7 +46,7 @@ int new_wp(char *e) {
 	free_ = node -> next;
 	node -> next = head;
 	head = node;
-	strncpy(node -> expr, e, 1024);
+	strncpy(node -> expr, e, 1023);
 	node -> val = v;
 	return 0;
 }
