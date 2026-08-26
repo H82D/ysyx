@@ -100,9 +100,14 @@ int vsprintf(char *out, const char *fmt, va_list ap) {
 						tmp[n--] = '0';
 					}
 					while (d) {
-						if (specifier == 'd') tmp[n--] = d % 10 + 0x30;
-						if (specifier == 'x') tmp[n--] = d % 16 + ((d % 16 < 10) ? 0x30 : 0x57);
-						d = d / 10;
+						if (specifier == 'd') {
+							tmp[n--] = d % 10 + '0';
+							d = d / 10;
+						}
+						if (specifier == 'x') {
+							tmp[n--] = d % 16 + ((d % 16 < 10) ? '0' : 'a' - 10);
+							d = d / 16;
+						}
 					}
 					while (19 - n < width) {
 						tmp[n--] = flags;
