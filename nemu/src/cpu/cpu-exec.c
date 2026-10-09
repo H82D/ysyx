@@ -33,6 +33,12 @@ static bool g_print_step = false;
 
 void device_update();
 
+#ifdef CONFIG_ITRACE
+static uint32_t iringbuf_inst[1000];
+static int iringbuf_p = 0;
+static uint32_t iringbuf_pc[1000];
+#endif
+
 static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
 #ifdef CONFIG_ITRACE_COND
   if (ITRACE_COND) { log_write("%s\n", _this->logbuf); }
@@ -52,6 +58,9 @@ static void exec_once(Decode *s, vaddr_t pc) {
   int ilen = s->snpc - s->pc;
   int i;
   uint8_t *inst = (uint8_t *)&s->isa.inst;
+	iringbuf_pc[iringbuf_p] = s->pc;
+	iringbuf_inst[iringbuf_p] = s->isa.inst;
+	if (++iringbuf_p >= 1000) iringbuf_p = 0;
 #ifdef CONFIG_ISA_x86
   for (i = 0; i < ilen; i ++) {
 #else
@@ -98,6 +107,27 @@ void assert_fail_msg() {
   statistic();
 }
 
+void iringbuf_output() {
+	extern FILE* iringbuf_fp;
+#ifdef CONFIG_IRINGBUF
+	int i = iringbuf_p;
+	char disasm[100];
+	void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
+	do {
+		if(iringbuf_inst[i] == 0) {
+			if(++i >= 1000) i = 0;
+			continue;
+		}
+		disassemble(disasm, 100, iringbuf_pc[i], (uint8_t*)(iringbuf_inst + i), 4);
+		fprintf(iringbuf_fp, "0x%x  %x  %s\n", iringbuf_pc[i], iringbuf_inst[i], disasm);
+		fflush(iringbuf_fp);
+		if(++i >= 1000) i = 0;
+	} while(i != iringbuf_p);
+#endif
+	fprintf(iringbuf_fp, "----------End----------");
+	fflush(iringbuf_fp);
+}
+
 /* Simulate how the CPU works. */
 void cpu_exec(uint64_t n) {
   g_print_step = (n < MAX_INST_TO_PRINT);
@@ -125,6 +155,8 @@ void cpu_exec(uint64_t n) {
             ANSI_FMT("HIT BAD TRAP", ANSI_FG_RED))),
           nemu_state.halt_pc);
       // fall through
-    case NEMU_QUIT: statistic();
+    case NEMU_QUIT: 
+			statistic();
+			IFDEF(CONFIG_IRINGBUF, iringbuf_output();)
   }
 }

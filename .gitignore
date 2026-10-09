@@ -1,11 +1,11 @@
 *.*
 *
 !*/
-!/nemu/*
+!/nemu/**
 !/nexus-am/*
 !/nanos-lite/*
 !/navy-apps/*
-!/npc/*
+!/npc/**
 !Makefile
 !README.md
 !.gitignore
