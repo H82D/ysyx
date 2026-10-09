@@ -41,7 +41,7 @@ $(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
 all: default
 
 run: $(BIN)
-	@$^
+	@$(BIN) $(IMG)
 
 clean:
 	rm -rf $(BUILD_DIR)
