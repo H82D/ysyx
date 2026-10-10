@@ -34,9 +34,9 @@ static bool g_print_step = false;
 void device_update();
 
 #ifdef CONFIG_ITRACE
-static uint32_t iringbuf_inst[1000];
+static uint32_t iringbuf_inst[CONFIG_IRINGBUF_SIZE];
 static int iringbuf_p = 0;
-static uint32_t iringbuf_pc[1000];
+static uint32_t iringbuf_pc[CONFIG_IRINGBUF_SIZE];
 #endif
 
 static void trace_and_difftest(Decode *_this, vaddr_t dnpc) {
@@ -60,7 +60,7 @@ static void exec_once(Decode *s, vaddr_t pc) {
   uint8_t *inst = (uint8_t *)&s->isa.inst;
 	iringbuf_pc[iringbuf_p] = s->pc;
 	iringbuf_inst[iringbuf_p] = s->isa.inst;
-	if (++iringbuf_p >= 1000) iringbuf_p = 0;
+	if (++iringbuf_p >= CONFIG_IRINGBUF_SIZE) iringbuf_p = 0;
 #ifdef CONFIG_ISA_x86
   for (i = 0; i < ilen; i ++) {
 #else
@@ -108,20 +108,20 @@ void assert_fail_msg() {
 }
 
 void iringbuf_output() {
-	extern FILE* iringbuf_fp;
+	extern FILE *iringbuf_fp;
 #ifdef CONFIG_IRINGBUF
 	int i = iringbuf_p;
 	char disasm[100];
 	void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
 	do {
 		if(iringbuf_inst[i] == 0) {
-			if(++i >= 1000) i = 0;
+			if(++i >= CONFIG_IRINGBUF_SIZE) i = 0;
 			continue;
 		}
 		disassemble(disasm, 100, iringbuf_pc[i], (uint8_t*)(iringbuf_inst + i), 4);
-		fprintf(iringbuf_fp, "0x%x  %x  %s\n", iringbuf_pc[i], iringbuf_inst[i], disasm);
+		fprintf(iringbuf_fp, "0x%08x  %08x  %s\n", iringbuf_pc[i], iringbuf_inst[i], disasm);
 		fflush(iringbuf_fp);
-		if(++i >= 1000) i = 0;
+		if(++i >= CONFIG_IRINGBUF_SIZE) i = 0;
 	} while(i != iringbuf_p);
 #endif
 	fprintf(iringbuf_fp, "----------End----------");

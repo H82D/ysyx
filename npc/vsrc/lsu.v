@@ -7,7 +7,8 @@ module lsu(
 	input		[4:0]gpr_write_addr,
 	input		[31:0]gpr_write_data,
 	output	[4:0]gpr_write_addr_o,
-	output	[31:0]gpr_write_data_o
+	output	[31:0]gpr_write_data_o,
+	output	write_success
 );
 	assign gpr_write_addr_o = gpr_write_addr;
 	wire [31:0]ram_read_data;
@@ -24,6 +25,5 @@ module lsu(
 	assign write_len = (lsu_fmt == 0) ? 1 :
 		(lsu_fmt == 1) ? 2 :
 		(lsu_fmt == 2) ? 4 : 3;
-	wire dummy;
-	assign dummy = ram_write(lsu_write_en, lsu_addr, lsu_write_data, {29'd0, write_len});
+	assign write_success = ram_write(lsu_write_en, lsu_addr, lsu_write_data, {29'd0, write_len});
 endmodule

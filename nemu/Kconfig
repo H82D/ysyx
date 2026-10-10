@@ -156,6 +156,11 @@ config IRINGBUF
 	bool "Enable instruction ring buffer"
 	default y
 
+config IRINGBUF_SIZE
+	depends on IRINGBUF
+	int "Size of instruction ring buffer"
+	default 100
+
 config MTRACE
 	depends on TRACE
 	bool "Enable memory tracer"
@@ -170,6 +175,11 @@ config MTRACE_END
 	depends on MTRACE
 	int "Tracing memory region end"
 	default 2281701376
+
+config FTRACE
+	depends on TRACE
+	bool "Enable function trace"
+	default y
 
 config DIFFTEST
   depends on TARGET_NATIVE_ELF

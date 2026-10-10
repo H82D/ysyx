@@ -3,7 +3,8 @@ import "DPI-C" function int ebreak();
 module npc(
 	input		clk, rst,
 	output	[31:0]reg_copy[15:0],
-	output	[31:0]pc_copy
+	output	[31:0]pc_copy,
+	output	write_success
 );
 
 	wire jump;
@@ -76,7 +77,8 @@ module npc(
 		.gpr_write_addr	(gpr_write_addr),
 		.gpr_write_data	(gpr_write_data),
 		.gpr_write_addr_o(gpr_write_addr_o),
-		.gpr_write_data_o(gpr_write_data_o)
+		.gpr_write_data_o(gpr_write_data_o),
+		.write_success	(write_success)
 	);
 
 	gpr GPR(

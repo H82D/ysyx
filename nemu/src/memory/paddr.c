@@ -31,7 +31,7 @@ paddr_t host_to_guest(uint8_t *haddr) { return haddr - pmem + CONFIG_MBASE; }
 static void mtrace(uint32_t addr, char* io, uint32_t data) {
 #ifdef CONFIG_MTRACE
 	extern FILE* mtrace_fp;
-	fprintf(mtrace_fp, "addr: 0x%x type:%s data:%d\n", addr, io, data);
+	fprintf(mtrace_fp, "addr: 0x%08x type:%s data:%d\n", addr, io, data);
 	fflush(mtrace_fp);
 #endif
 }
@@ -68,7 +68,6 @@ word_t paddr_read(paddr_t addr, int len) {
 	}
 #ifdef CONFIG_DEVICE	
 	word_t ret = mmio_read(addr, len);
-	mtrace(addr, "read  ", ret);
 	return ret;
 #endif
   out_of_bound(addr);
@@ -77,12 +76,11 @@ word_t paddr_read(paddr_t addr, int len) {
 
 void paddr_write(paddr_t addr, int len, word_t data) {
   if (likely(in_pmem(addr))) { 
-		mtrace(addr, "write ", data);
 		pmem_write(addr, len, data); 
+		mtrace(addr, "write ", data);
 		return; 
 	}
 #ifdef CONFIG_DEVICE
-	mtrace(addr,"write ", data);
 	mmio_write(addr, len, data); 
 	return;
 #endif
