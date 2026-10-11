@@ -36,14 +36,14 @@ static void parse_format(char *ins, int n, char *flags, int *width, int *precisi
 	}
 	*width = 0;
 	while (ins[i] >= '0' && ins [i] <= '9') {
-		*width = *width * 10 + ins[i] - 0x30;
+		*width = *width * 10 + ins[i] - '0';
 		i++;
 	}
 	*precision = 0;
 	if (ins[i] == '.') {
 		i++;
 		while (ins[i] >= '0' && ins[i] <= '9') {
-			*precision = *precision * 10 + ins[i] - 0x30;
+			*precision = *precision * 10 + ins[i] - '0';
 			i++;
 		}
 	}
@@ -64,7 +64,7 @@ int vsprintf(char *out, const char *fmt, va_list ap) {
 	int width, precision;
 	int i = 0, j = 0, k = 0;
 	int n = 19;
-	int d;
+	uint32_t d;
 	union u_f {
 		double f;
 		long int d;
@@ -105,8 +105,8 @@ int vsprintf(char *out, const char *fmt, va_list ap) {
 							d = d / 10;
 						}
 						if (specifier == 'x') {
-							tmp[n--] = d % 16 + ((d % 16 < 10) ? '0' : 'a' - 10);
-							d = d / 16;
+							tmp[n--] = (d & 0xf) + (((d & 0xf) < 10) ? '0' : ('a' - 10));
+							d = d >> 4;
 						}
 					}
 					while (19 - n < width) {

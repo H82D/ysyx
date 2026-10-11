@@ -17,6 +17,7 @@
 #define __RISCV_REG_H__
 
 #include <common.h>
+#include <isa-def.h>
 
 static inline int check_reg_idx(int idx) {
   IFDEF(CONFIG_RT_CHECK, assert(idx >= 0 && idx < MUXDEF(CONFIG_RVE, 16, 32)));
@@ -28,6 +29,23 @@ static inline int check_reg_idx(int idx) {
 static inline const char* reg_name(int idx) {
   extern const char* regs[];
   return regs[check_reg_idx(idx)];
+}
+
+#define csr(idx) (cpu.csr[check_csr_idx(idx)])
+
+static inline int check_csr_idx(int idx) {
+	switch (idx) {
+		case 0x305:
+			return csr_mtvec;
+		case 0x341:
+			return csr_mepc;
+		case 0x342:
+			return csr_mcause;
+		case 0x300:
+			return csr_mstatus;
+		default:
+			assert(0);
+	}
 }
 
 #endif
