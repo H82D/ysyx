@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <assert.h>
 #include <elf.h>
+#include <cpu/decode.h>
 
 struct {
-	char	name[100];
-	int		ent;
+	char				name[100];
+	uint32_t		ent;
+	uint32_t		size;
 } func[100];
 int func_num = 0;
 
@@ -50,8 +52,49 @@ void init_ftrace(const char *elf_file) {
 		if ((sym[i].st_info & 0xf) == STT_FUNC) {
 			readstring(func[func_num].name, fp, shdr[strtab_idx].sh_offset + sym[i].st_name);
 			func[func_num].ent = sym[i].st_value;
+			func[func_num].size = sym[i].st_size;
 			func_num++;
 		}
 	}
-
 }
+
+#ifdef CONFIG_FTRACE
+static uint32_t func_stack_lvl = 0;
+
+void ftrace_rec(Decode* s) {
+	extern FILE *ftrace_fp;
+	bool find = 0;
+	if (strchr(s->logbuf, 'j')) {
+		for (int i = 0; i < func_num; i++) {
+			if (s->dnpc ==  func[i].ent) {
+				fprintf(ftrace_fp, "0x%08x: ", s->pc);
+				for (int j = 0; j < func_stack_lvl; j++) {
+					fputc(' ', ftrace_fp);
+				}
+				fprintf(ftrace_fp, "call [%s@0x%08x]\n", func[i].name, func[i].ent);
+				find = 1;
+				func_stack_lvl++;
+			}
+		}
+		if (find == 0) {
+			fprintf(ftrace_fp, "0x%08x: jump 0x%08x\n", s->pc, s->dnpc);
+		}
+	}
+	else if (strstr(s->logbuf, "ret")) {
+		for (int i = 0; i < func_num; i++) {
+			if (s->pc >= func[i].ent && s->pc < func[i].ent + func[i].size) {
+				fprintf(ftrace_fp, "0x%08x: ", s->pc);
+				for (int j = 0; j < func_stack_lvl; j++) {
+					fputc(' ', ftrace_fp);
+				}
+				fprintf(ftrace_fp, "ret [%s]\n", func[i].name);
+				find = 1;
+				func_stack_lvl--;
+			}
+		}
+		if (find == 0) {
+			fprintf(ftrace_fp, "0x%08x: ret\n", s->pc);
+		}
+	}
+}
+#endif
