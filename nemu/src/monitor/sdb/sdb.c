@@ -125,7 +125,7 @@ static int cmd_p(char *args){
 	}
 	bool success;
 	int64_t val = expr(args, &success);
-	if(success) printf("%ld\n", val);
+	if(success) printf("%-10ld  0x%-10lx\n", val, val);
 	else printf("evaluation fail\n");
 	return 0;
 }

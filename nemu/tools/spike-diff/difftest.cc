@@ -114,6 +114,7 @@ __EXPORT void difftest_init(int port) {
             /*default_hartids=*/std::vector<size_t>(1),
             /*default_real_time_clint=*/false,
             /*default_trigger_count=*/4);
+	cfg->priv = "M";
   s = new sim_t(cfg, false,
       difftest_mem, difftest_plugin_devices, difftest_htif_args,
       difftest_dm_config, nullptr, false, NULL,

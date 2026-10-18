@@ -110,9 +110,10 @@ void check_wp() {
 			changed = true;
 		}
 		if (v != node -> val){
+			printf("pc: 0x%08x\n", cpu.pc);
 			printf("watchpoint id:%d\n", node -> NO);
 			printf("expression changed: %s\n", node -> expr);
-			printf("former value:%d, changed value:%d\n", node -> val, v);
+			printf("old value:%-10d %-10x\nnew value:%-10d %-10x\n", node -> val, node->val, v, v);
 			node -> val = v;
 			changed = true;
 		}

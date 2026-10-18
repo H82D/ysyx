@@ -117,20 +117,20 @@ static bool make_token(char *e) {
 						tokens[nr_token].type = '+';
 						break;
 					case '-':
-						if(nr_token == 0
-								|| tokens[nr_token - 1].type == TK_NUM_HEX
+						if(nr_token > 0 && (
+								tokens[nr_token - 1].type == TK_NUM_HEX
 								|| tokens[nr_token - 1].type == TK_NUM_DEC
 								|| tokens[nr_token - 1].type == TK_REG
-								|| tokens[nr_token - 1].type == ')')
+								|| tokens[nr_token - 1].type == ')'))
 							tokens[nr_token].type = '-';
 						else tokens[nr_token].type = TK_NEG;
 						break;
 					case '*':
-						if(nr_token == 0
-								|| tokens[nr_token - 1].type == TK_NUM_HEX
+						if(nr_token > 0 && (
+								tokens[nr_token - 1].type == TK_NUM_HEX
 								|| tokens[nr_token - 1].type == TK_NUM_DEC
 								|| tokens[nr_token - 1].type == TK_REG
-								|| tokens[nr_token - 1].type == ')')
+								|| tokens[nr_token - 1].type == ')'))
 							tokens[nr_token].type = '*';
 						else tokens[nr_token].type = TK_PTR;
 						break;

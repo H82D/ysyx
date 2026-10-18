@@ -17,6 +17,9 @@
 #define __SDB_H__
 
 #include <common.h>
+#include <isa.h>
+
+extern CPU_state cpu;
 
 word_t expr(char *e, bool *success);
 

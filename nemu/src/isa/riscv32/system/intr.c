@@ -20,7 +20,27 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
    * Then return the address of the interrupt/exception vector.
    */
 
-  return 0;
+	// MIE = mstatus[3], MPIE = mstatus[7]
+	int mie = (cpu.csr[mstatus] >> 3) & 1;
+	if (mie == 0)
+		cpu.csr[mstatus] = cpu.csr[mstatus] & (0xffffffff - (1 << 7));
+	else
+		cpu.csr[mstatus] = cpu.csr[mstatus] | (1 << 7);
+	cpu.csr[mstatus] = cpu.csr[mstatus] & (0xffffffff - (1 << 3));
+	
+	cpu.csr[mcause] = NO;
+	cpu.csr[mepc] = epc;
+  return cpu.csr[mtvec];
+}
+
+word_t isa_finish_intr() {
+	int mpie = (cpu.csr[mstatus] >> 7) & 1;
+	if (mpie == 0)
+		cpu.csr[mstatus] = cpu.csr[mstatus] & (0xffffffff - (1 << 3));
+	else
+		cpu.csr[mstatus] = cpu.csr[mstatus] | (1 << 3);
+	cpu.csr[mstatus] = cpu.csr[mstatus] | (1 << 7);
+	return cpu.csr[mepc];
 }
 
 word_t isa_query_intr() {
