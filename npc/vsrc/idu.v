@@ -8,7 +8,9 @@ module idu(
 	output	[31:0]imm,
 	output	[4:0]rd,
 	output	[4:0]gpr_addr1, gpr_addr2,
-	input		[31:0]gpr_data1, gpr_data2
+	input		[31:0]gpr_data1, gpr_data2,
+	output	[11:0]csr_addr,
+	input		[31:0]csr_data
 );
 
 	localparam R_type = 3'h0;
@@ -38,8 +40,13 @@ module idu(
 	assign rd = inst[11:7];
 	assign gpr_addr1 = inst[19:15];
 	assign gpr_addr2 = inst[24:20];
+	assign csr_read_addr = (inst == 32'h73) ? 12'h305 :	// ecall, mtvec
+		(inst == 32'h30200073) ? 12'h341 :						// mret, mepc
+		inst[31:20];
+	assign csr_write_addr = (inst == 32'h73) ? 12'h341 : // ecall, mepc
+		inst[31:20];
 	assign num1 = gpr_data1;
-	assign num2 = gpr_data2;
+	assign num2 = (opcode == 7'b1110011) ? csr_data : gpr_data2;
 
 	assign imm = (typ == I_type) ? {{20{inst[31]}}, inst[31:20]} :
 		(typ == S_type) ? {{20{inst[31]}}, inst[31:25], inst[11:7]} :

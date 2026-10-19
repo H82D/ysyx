@@ -5,13 +5,15 @@ module exu(
 	input		[31:0]num1, num2, imm,
 	input		[4:0]rd,
 	output	[4:0]gpr_write_addr,
-	output	signed [31:0]gpr_write_data,
+	output	[31:0]gpr_write_data,
 	output	lsu_read_en, lsu_write_en,
 	output	[2:0]lsu_fmt,
 	output	[31:0]lsu_addr, lsu_write_data,
 	input		[31:0]pc,
 	output	jump,
-	output	[31:0]jump_addr
+	output	[31:0]jump_addr,
+	output	csr_write_en,
+	output	csr_write_data
 );
 	assign lsu_fmt = funct3;
 	assign lsu_addr = num1 + imm;
@@ -25,7 +27,8 @@ module exu(
 		opcode == 7'b1101111 ||																								// jal
 		opcode == 7'b0000011 ||																								// load
 		opcode == 7'b0010111 ||																								// auipc
-		opcode == 7'b0110111																									// lui
+		opcode == 7'b0110111 ||																								// lui
+		opcode == 7'b1110011																									// system
 		) ? rd : 0;
 
 	assign gpr_write_data = (opcode == 7'b0110011) ? (
@@ -65,11 +68,14 @@ module exu(
 		(opcode == 7'b0100011) ? 0 :																					// store
 		(opcode == 7'b0000011) ? 0 :																					// load
 		(opcode == 7'b1100011) ? 0 :																					// branch
+		(opcode == 7'b1110011 && (funct3 == 1 || funct3 == 2)) ? num2 :				// csrr
 		inv_inst();
 	
 	assign jump_addr = (opcode == 7'b1100111) ? {{num1 + imm}[31:1], 1'd0} :// jalr
 										 (opcode == 7'b1101111) ? (pc + imm) :								// jal
 										 (opcode == 7'b1100011) ? (pc + imm) :								// branch
+										 (opcode == 7'b1110011 && funct3 == 0 && imm = 0) ? num2 :// ecall
+										 (opcode == 7'b1110011 && funct3 == 0 && imm = 32'h302) ? num2 : //mret
 										 0;
 	assign jump = (opcode == 7'b1100111) ? 1 :															// jalr
 		(opcode == 7'b1101111) ? 1 :																					// jal
@@ -80,5 +86,13 @@ module exu(
 			(funct3 == 3'b110) ? (num1 < num2) :																// bltu
 			(funct3 == 3'b101) ? ~($signed(num1) < $signed(num2)) :							// bge
 			(funct3 == 3'b111) ? ~(num1 < num2) :																// bgeu
-			inv_inst()[0]) : 1'b0;
+			inv_inst()[0]) : 
+		(opcode == 7'b1110011 && funct3 == 0 && (imm == 0 || imm == 32'h302) ? 1 :
+		1'b0;
+
+	assign csr_write_en = (opcode == 7'b1110011) & ((funct3 == 3'b001) || (funct3 == 3'b010) || (funct3 == 0 && imm = 0));
+	assign csr_write_data = (funct3 == 3'b001) ? num1 :
+		(funct3 == 3'b010) ? (num1 | num2) :
+		(funct3 == 0 && imm = 0) ? pc :
+		0;
 endmodule

@@ -4,7 +4,7 @@ module npc(
 	input		clk, rst,
 	output	[31:0]reg_copy[15:0],
 	output	[31:0]pc_copy,
-	output	write_success
+	output	[31:0]csr_copy[7:0]
 );
 
 	wire jump;
