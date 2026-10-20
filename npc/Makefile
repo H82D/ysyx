@@ -25,14 +25,18 @@ VSRCS = $(shell find $(abspath ./vsrc) -name "*.v")
 CSRCS = $(shell find $(abspath ./csrc) -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 CSRCS += $(SRC_AUTO_BIND)
 
+# rules for capstone
+include $(NPC_HOME)/csrc/filelist.mk
+
 # rules for NVBoard
 include $(NVBOARD_HOME)/scripts/nvboard.mk
 
 # rules for verilator
-INCFLAGS = $(addprefix -I, $(INC_PATH))
+INCFLAGS += $(addprefix -I, $(INC_PATH))
 CXXFLAGS += $(INCFLAGS) -DTOP_NAME="\"V$(TOPNAME)\""
 
-$(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
+
+$(BIN): $(LIBCAPSTONE) $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE) 
 	@rm -rf $(OBJ_DIR)
 	$(VERILATOR) $(VERILATOR_CFLAGS) \
 		--top-module $(TOPNAME) $^ \
@@ -42,6 +46,9 @@ $(BIN): $(VSRCS) $(CSRCS) $(NVBOARD_ARCHIVE)
 all: default
 
 run: $(BIN)
+	@$(BIN) $(IMG) -b
+
+sdb: $(BIN)
 	@$(BIN) $(IMG)
 
 clean:

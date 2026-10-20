@@ -13,7 +13,7 @@ module exu(
 	output	jump,
 	output	[31:0]jump_addr,
 	output	csr_write_en,
-	output	csr_write_data
+	output	[31:0]csr_write_data
 );
 	assign lsu_fmt = funct3;
 	assign lsu_addr = num1 + imm;
@@ -69,13 +69,14 @@ module exu(
 		(opcode == 7'b0000011) ? 0 :																					// load
 		(opcode == 7'b1100011) ? 0 :																					// branch
 		(opcode == 7'b1110011 && (funct3 == 1 || funct3 == 2)) ? num2 :				// csrr
+		(opcode == 7'b1110011) ? 0 :
 		inv_inst();
 	
 	assign jump_addr = (opcode == 7'b1100111) ? {{num1 + imm}[31:1], 1'd0} :// jalr
 										 (opcode == 7'b1101111) ? (pc + imm) :								// jal
 										 (opcode == 7'b1100011) ? (pc + imm) :								// branch
-										 (opcode == 7'b1110011 && funct3 == 0 && imm = 0) ? num2 :// ecall
-										 (opcode == 7'b1110011 && funct3 == 0 && imm = 32'h302) ? num2 : //mret
+										 (opcode == 7'b1110011 && funct3 == 0 && imm == 0) ? num2 :// ecall
+										 (opcode == 7'b1110011 && funct3 == 0 && imm == 32'h302) ? num2 : //mret
 										 0;
 	assign jump = (opcode == 7'b1100111) ? 1 :															// jalr
 		(opcode == 7'b1101111) ? 1 :																					// jal
@@ -87,12 +88,12 @@ module exu(
 			(funct3 == 3'b101) ? ~($signed(num1) < $signed(num2)) :							// bge
 			(funct3 == 3'b111) ? ~(num1 < num2) :																// bgeu
 			inv_inst()[0]) : 
-		(opcode == 7'b1110011 && funct3 == 0 && (imm == 0 || imm == 32'h302) ? 1 :
-		1'b0;
+		(opcode == 7'b1110011 && funct3 == 0 && (imm == 0 || imm == 32'h302)) ? 1 :
+		0;
 
-	assign csr_write_en = (opcode == 7'b1110011) & ((funct3 == 3'b001) || (funct3 == 3'b010) || (funct3 == 0 && imm = 0));
+	assign csr_write_en = (opcode == 7'b1110011) & ((funct3 == 3'b001) || (funct3 == 3'b010) || (funct3 == 0 && imm == 0));
 	assign csr_write_data = (funct3 == 3'b001) ? num1 :
 		(funct3 == 3'b010) ? (num1 | num2) :
-		(funct3 == 0 && imm = 0) ? pc :
+		(funct3 == 0 && imm == 0) ? pc :
 		0;
 endmodule

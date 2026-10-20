@@ -4,7 +4,8 @@ module npc(
 	input		clk, rst,
 	output	[31:0]reg_copy[15:0],
 	output	[31:0]pc_copy,
-	output	[31:0]csr_copy[7:0]
+	output	[31:0]csr_copy[7:0],
+	output	write_success
 );
 
 	wire jump;
@@ -26,6 +27,8 @@ module npc(
 	wire [4:0]rd;
 	wire [4:0]gpr_read_addr1, gpr_read_addr2;
 	wire [31:0]gpr_read_data1, gpr_read_data2;
+	wire [11:0]csr_read_addr, csr_write_addr;
+	wire [31:0]csr_read_data;
 	idu IDU(
 		.inst				(inst),
 		.opcode			(opcode),
@@ -38,7 +41,10 @@ module npc(
 		.gpr_addr1	(gpr_read_addr1),
 		.gpr_addr2	(gpr_read_addr2),
 		.gpr_data1	(gpr_read_data1),
-		.gpr_data2	(gpr_read_data2)
+		.gpr_data2	(gpr_read_data2),
+		.csr_read_addr	(csr_read_addr),
+		.csr_write_addr	(csr_write_addr),
+		.csr_read_data	(csr_read_data)
 	);
 
 	wire [4:0]gpr_write_addr;
@@ -46,6 +52,8 @@ module npc(
 	wire lsu_read_en, lsu_write_en;
 	wire [2:0]lsu_fmt;
 	wire [31:0]lsu_addr, lsu_write_data;
+	wire csr_write_en;
+	wire [31:0]csr_write_data;
 	exu EXU(
 		.opcode					(opcode),
 		.funct3					(funct3),
@@ -63,7 +71,9 @@ module npc(
 		.lsu_write_data	(lsu_write_data),
 		.pc							(pc),
 		.jump						(jump),
-		.jump_addr			(jump_addr)
+		.jump_addr			(jump_addr),
+		.csr_write_en		(csr_write_en),
+		.csr_write_data	(csr_write_data)
 	);
 
 	wire [4:0]gpr_write_addr_o;
@@ -92,4 +102,14 @@ module npc(
 		.reg_copy		(reg_copy)
 	);
 	
+	csr CSR(
+		.csr_write_en		(csr_write_en),
+		.csr_read_addr	(csr_read_addr),
+		.csr_write_addr	(csr_write_addr),
+		.csr_write_data	(csr_write_data),
+		.csr_read_data	(csr_read_data),
+		.clk						(clk),
+		.rst						(rst),
+		.csr_copy				(csr_copy)
+	);
 endmodule

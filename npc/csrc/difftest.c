@@ -33,7 +33,6 @@ void difftest_init(const char *ref_so_file) {
 	for (int i = 0; i < 16; i++)
 		dut_reg_copy[i] = dut.reg_copy[i];
 	ref_difftest_regcpy(&dut.pc_copy, dut_reg_copy, DIFFTEST_TO_REF);
-#endif
 }
 static void report() {
 	uint32_t ref_pc;
@@ -54,12 +53,12 @@ static void checkregs() {
 	uint32_t ref_pc;
 	uint32_t ref_gpr[16];
 	ref_difftest_regcpy(&ref_pc, ref_gpr, DIFFTEST_TO_DUT);
-	/*
+
 	if (dut.pc_copy != ref_pc) {
 		CPU_STATUS = EXCEPT;
 		report();
 	}
-	*/
+
 	for (int i = 0; i < 16; i++) {
 		if (dut.reg_copy[i] != ref_gpr[i]) {
 			CPU_STATUS = EXCEPT;
@@ -71,4 +70,5 @@ static void checkregs() {
 void difftest_step() {
 	ref_difftest_exec(1);
 	checkregs();
+#endif
 }

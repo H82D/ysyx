@@ -5,14 +5,14 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#define DIFFTEST_ON
+// #define DIFFTEST_ON
 
 #define RAM_BASE 0x80000000
 #define RAM_SIZE 0x8000000				// from 0x80000000 to 0x88000000
 extern uint8_t *ram;
 extern uint32_t img_size;
 void ram_init(const char *img_file);
-extern "C" uint32_t ram_read(uint32_t addr);
+extern "C" uint32_t ram_read(bool en, uint32_t addr);
 extern "C" bool ram_write(bool en, uint32_t addr, uint32_t data, int len);
 
 extern TOP_NAME dut;
@@ -30,4 +30,7 @@ void cpu_init();
 void difftest_init(const char *ref_so_file);
 void difftest_step();
 
+extern const char *reg_names[32];
 void monitor_init();
+
+void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);

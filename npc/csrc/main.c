@@ -2,8 +2,8 @@
 
 FILE* itrace_fp = NULL;
 TOP_NAME dut;
+extern bool batch_mode;
 
-// lllllllllllllllllllll
 //void nvboard_bind_all_pins(TOP_NAME *top);
 
 int main(int argc, char *argv[]){
@@ -27,11 +27,18 @@ int main(int argc, char *argv[]){
 	cpu_init();
 
 	char itrace_file[1000];
-	strncpy(itrace_file, strcat(work_dir, "riscv32e-npc-itrace.txt"), 1000);
+	strncpy(itrace_file, work_dir, 1000);
+	strcat(itrace_file, "riscv32e-npc-itrace.txt");
 	itrace_fp = fopen(itrace_file, "w+");
+
 
 	difftest_init("/home/hbzd/ysyx-workbench/nemu/build/riscv32-nemu-interpreter-so");
 
+	if (strcmp(argv[2], "-b") == 0) {
+		batch_mode = 1;
+	} else {
+		batch_mode = 0;
+	}
 	monitor_init();
 
 	if (CPU_STATUS == END)

@@ -1,9 +1,10 @@
 #include "common.h"
 
 CPU_status CPU_STATUS;
+static bool print_step;
 
 extern "C" int inv_inst() {
-	printf("Invalid instruction %08x at 0x%08x\n", ram_read(dut.pc_copy), dut.pc_copy);
+	printf("Invalid instruction %08x at 0x%08x\n", ram_read(1, dut.pc_copy), dut.pc_copy);
 	CPU_STATUS = EXCEPT;
 	return -1;
 }
@@ -14,9 +15,11 @@ extern "C" int ebreak() {
 }
 
 static void itrace(uint32_t addr) {
-	uint32_t inst = ram_read(addr);
+	uint32_t inst = ram_read(1, addr);
 	fprintf(itrace_fp, "0x%08x: %08x\n", addr, inst);
 	fflush(itrace_fp);
+	if (print_step)
+		printf("0x%08x: %08x\n", addr, inst);
 }
 
 static void single_step() {
@@ -30,8 +33,9 @@ static void single_step() {
 }
 
 void cpu_cycle(uint32_t i) {
-	int j;
-	for(j = 0; j != i; j++) {
+	print_step = (i < 17);
+	uint32_t j;
+	for(j = 0; j <= i; j++) {
 		CPU_STATUS = RUNNING;
 		single_step();
 #ifdef DIFFTEST_ON
